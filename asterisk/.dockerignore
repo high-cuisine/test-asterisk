@@ -1,0 +1,7 @@
+logs/
+recordings/
+data/
+*.log
+.git/
+.gitignore
+
