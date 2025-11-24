@@ -23,7 +23,61 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Легкий backend для симуляции звонков: сервер подключается к Asterisk по AMI и
+использует модуль `@proccesor` (OpenAI) для имитации ответа оператора или нейросети.
+
+### Быстрый старт
+
+```bash
+npm install
+npm run start:dev
+```
+
+### Переменные окружения
+
+| Имя | Назначение | Значение по умолчанию |
+| --- | --- | --- |
+| `PORT` | Порт HTTP сервера | `3000` |
+| `OPENAI_API_KEY` | Ключ OpenAI для реальных ответов | отсутствует (используется заглушка) |
+| `ASTERISK_AMI_HOST` | Хост Asterisk AMI | mock режим, если не задан |
+| `ASTERISK_AMI_PORT` | Порт AMI | `5038` |
+| `ASTERISK_AMI_USER` | Пользователь AMI | mock режим, если не задан |
+| `ASTERISK_AMI_SECRET` | Пароль AMI | mock режим, если не задан |
+
+Без указания AMI/AI переменных сервис продолжит работу в режиме заглушек:
+запрос к Asterisk не будет отправлен, а ответ ИИ вернется статическим текстом.
+
+### Основной сценарий
+
+`POST /simulate-call`
+
+```jsonc
+{
+  "caller": "1001",
+  "callee": "1002",
+  "userMessage": "Нужно записаться к кардиологу",
+  "scenario": "appointment"
+}
+```
+
+**Ответ**
+
+```jsonc
+{
+  "caller": "1001",
+  "callee": "1002",
+  "scenario": "appointment",
+  "originateResult": { "...": "..." },
+  "aiResponse": { "type": "text", "content": "..." },
+  "transcript": [
+    { "from": "1001", "text": "..." },
+    { "from": "assistant", "text": "..." }
+  ]
+}
+```
+
+Контроллер находится в `CallSimulatorModule`, а вся логика обращения к AMI/LLM
+инкапсулирована в `AsteriskService` и `ProccesorService`.
 
 ## Project setup
 

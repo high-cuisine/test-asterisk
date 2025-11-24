@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { systemPrompt } from "../constants/system.prompt";
 import OpenAI from "openai";
 import { ChatMsg } from "../interface/chat.interface";
@@ -12,15 +12,20 @@ import { findDoctorPrompt } from "../constants/findDoctorPrompt.prompt";
 @Injectable()
 export class ProccesorService {
 
-    private readonly openai: OpenAI;
+    private readonly logger = new Logger(ProccesorService.name);
+    private readonly openai?: OpenAI;
     telegramService: any;
     constructor(
         private readonly servicesService: ServicesService,
         private readonly doctorService: DoctorService
     ) {
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        });
+        if (process.env.OPENAI_API_KEY) {
+            this.openai = new OpenAI({
+                apiKey: process.env.OPENAI_API_KEY,
+            });
+        } else {
+            this.logger.warn('OPENAI_API_KEY is not set. Responses will use a mock fallback.');
+        }
     }
 
     
@@ -38,6 +43,10 @@ export class ProccesorService {
         // Отладочная информация
         console.log('Final messages array:', JSON.stringify(messagesReq, null, 2));
         
+        if(!this.openai) {
+            return { type: 'text', content: 'ИИ сейчас недоступен, ответ сгенерирован заглушкой.'};
+        }
+
         const response = await this.openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: messagesReq as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
@@ -56,6 +65,10 @@ export class ProccesorService {
         const servicesList = await this.servicesService.getServices();
         const messagesReq = [{ role: 'system', content: findServicePrompt.replace('{services_list}', servicesList.join('\n')) }, { role: 'user', content: userService }];
 
+        if(!this.openai) {
+            return 'ИИ недоступен. Сервисов по запросу не найдено.';
+        }
+
         const response = await this.openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: messagesReq as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
@@ -68,6 +81,10 @@ export class ProccesorService {
     async findDoctorForAppointment(userService: string) {
         const doctorsList = await this.doctorService.getDoctors();
         const messagesReq = [{ role: 'system', content: findDoctorPrompt.replace('{doctors_list}', JSON.stringify(doctorsList.data.userPosition)) }, { role: 'user', content: userService }];
+        if(!this.openai) {
+            return 'ИИ недоступен. Подберите врача вручную.';
+        }
+
         const response = await this.openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: messagesReq as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
